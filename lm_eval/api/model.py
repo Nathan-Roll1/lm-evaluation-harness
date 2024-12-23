@@ -404,7 +404,6 @@ class TemplateLM(LM):
             c. Raise an error if no default template exists and no specific template is provided.
         2. If the model's tokenizer has a single template or no template:
             a. Use the tokenizer's chat template if available.
-            b. Fall back to the default chat template if no tokenizer chat template exists.
 
         Args:
             chat_template (Union[bool, str]): Specifies the chat template to use.
@@ -428,24 +427,18 @@ class TemplateLM(LM):
         # Convert boolean chat_template to None to ensure compatibility with the adapted logic
         if isinstance(chat_template, bool):
             chat_template = None
-        using_default_template = False
 
         # First, handle the cases when the model has a dict of multiple templates
         try:
-            template = (
-                self.tokenizer.chat_template or self.tokenizer.default_chat_template
-            )
+            template = self.tokenizer.chat_template
+
         except AttributeError:
             return None
 
         if isinstance(template, dict):
-            using_default_dict = self.tokenizer.chat_template is None
-
             if chat_template is not None:
                 if chat_template in template:
                     selected_template = template[chat_template]
-                    if using_default_dict:
-                        using_default_template = True
                 else:
                     raise ValueError(
                         f"The specified chat template '{chat_template}' is not available. "
@@ -455,7 +448,6 @@ class TemplateLM(LM):
                 # If user didn't pass a chat template, use the default template from the dict
                 if "default" in template:
                     selected_template = template["default"]
-                    using_default_template = True
                 else:
                     raise ValueError(
                         "This model has multiple chat templates with no default specified! Please either pass a chat "
@@ -465,25 +457,15 @@ class TemplateLM(LM):
 
         # Cases when the model has a single template or no template
         else:
-            # priority: `chat_template` argument > `tokenizer.chat_template` > `tokenizer.default_chat_template
+            # priority: `chat_template` argument > `tokenizer.chat_template`
             if isinstance(chat_template, str):
                 eval_logger.warning(
                     "Chat template name provided, but the tokenizer's chat template is not a dictionary. "
-                    "Using the tokenizer's chat template or the default template instead."
+                    "Using the tokenizer's chat template"
                 )
             if self.tokenizer.chat_template is not None:
                 selected_template = self.tokenizer.chat_template
             else:
-                selected_template = self.tokenizer.default_chat_template
-                using_default_template = True
-
-        if using_default_template:
-            eval_logger.warning(
-                "No chat template is set for this tokenizer, falling back to a default class-level template. This is "
-                "very error-prone, because models are often trained with templates different from the class default! "
-                "Default chat templates are a legacy feature and will be removed in Transformers v4.43, at which "
-                "point any code depending on them will stop working. We recommend setting a valid chat template before "
-                "then to ensure that this model continues working without issues."
-            )
+                raise AttributeError("No chat template is set for this tokenizer.")
 
         return selected_template
