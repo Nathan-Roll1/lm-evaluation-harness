@@ -3,20 +3,7 @@ import yaml
 
 languages = [
     "en",
-    "ar",
-    "fr",
-    "es",
-    "hi",
-    "de",
-    "id",
-    "it",
-    "ja",
-    "ko",
-    "pt",
-    "zh",
-    "yo",
-    "bn",
-    "sw",
+    "es"
 ]
 
 
